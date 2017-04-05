@@ -161,15 +161,19 @@ public class TermuxFloatService extends Service {
     TerminalSession createTermSession() {
         new File(HOME_PATH).mkdirs();
 
-        String termEnv = "TERM=xterm-256color";
-        String homeEnv = "HOME=" + HOME_PATH;
-        String prefixEnv = "PREFIX=" + PREFIX_PATH;
-        String[] env;
-        String ps1Env = "PS1=$ ";
-        String ldEnv = "LD_LIBRARY_PATH=" + PREFIX_PATH + "/lib";
-        String langEnv = "LANG=en_US.UTF-8";
-        String pathEnv = "PATH=" + PREFIX_PATH + "/bin:" + PREFIX_PATH + "/bin/applets:" + System.getenv("PATH");
-        env = new String[]{termEnv, homeEnv, prefixEnv, ps1Env, ldEnv, langEnv, pathEnv};
+        final String termEnv = "TERM=xterm-256color";
+        final String homeEnv = "HOME=" + TermuxFloatService.HOME_PATH;
+        final String prefixEnv = "PREFIX=" + TermuxFloatService.PREFIX_PATH;
+        final String androidRootEnv = "ANDROID_ROOT=" + System.getenv("ANDROID_ROOT");
+        final String androidDataEnv = "ANDROID_DATA=" + System.getenv("ANDROID_DATA");
+        // EXTERNAL_STORAGE is needed for /system/bin/am to work on at least
+        // Samsung S7 - see https://plus.google.com/110070148244138185604/posts/gp8Lk3aCGp3.
+        final String externalStorageEnv = "EXTERNAL_STORAGE=" + System.getenv("EXTERNAL_STORAGE");
+        final String ps1Env = "PS1=$ ";
+        final String ldEnv = "LD_LIBRARY_PATH=" + TermuxFloatService.PREFIX_PATH + "/lib";
+        final String langEnv = "LANG=en_US.UTF-8";
+        final String pathEnv = "PATH=" + TermuxFloatService.PREFIX_PATH + "/bin:" + TermuxFloatService.PREFIX_PATH + "/bin/applets";
+        String[] env = new String[]{termEnv, homeEnv, prefixEnv, ps1Env, ldEnv, langEnv, pathEnv, androidRootEnv, androidDataEnv, externalStorageEnv};
 
         String executablePath = null;
         String[] args;

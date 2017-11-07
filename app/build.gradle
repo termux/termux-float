@@ -1,15 +1,14 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 27
-    buildToolsVersion "27.0.1"
+    compileSdkVersion 28
 
     defaultConfig {
         applicationId "com.termux.window"
         minSdkVersion 21
-        targetSdkVersion 27
-        versionCode 11
-        versionName "0.11"
+        targetSdkVersion 28
+        versionCode 12
+        versionName "0.12"
     }
 
     buildTypes {
@@ -22,8 +21,8 @@ android {
 }
 
 dependencies {
-    compile 'com.android.support:support-annotations:27.0.0'
-    compile 'com.termux:terminal-view:0.50'
+    implementation 'com.android.support:support-annotations:27.1.1'
+    implementation 'com.termux:terminal-view:0.50'
 
-    testCompile 'junit:junit:4.12'
+    testImplementation 'junit:junit:4.12'
 }

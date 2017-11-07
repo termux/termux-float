@@ -4,7 +4,10 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
+import android.graphics.Typeface;
+import android.os.Build;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
@@ -14,7 +17,10 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
+import com.termux.terminal.EmulatorDebug;
 import com.termux.view.TerminalView;
+
+import java.io.File;
 
 public class TermuxFloatView extends LinearLayout {
 
@@ -94,7 +100,17 @@ public class TermuxFloatView extends LinearLayout {
         DISPLAY_WIDTH = displaySize.x;
         DISPLAY_HEIGHT = displaySize.y;
 
-        // mTerminalView.checkForFontAndColors();
+        checkForFont();
+    }
+
+    void checkForFont() {
+        try {
+            @SuppressLint("SdCardPath") File fontFile = new File("/data/data/com.termux/files/home/.termux/font.ttf");
+            final Typeface newTypeface = (fontFile.exists() && fontFile.length() > 0) ? Typeface.createFromFile(fontFile) : Typeface.MONOSPACE;
+            mTerminalView.setTypeface(newTypeface);
+        } catch (Exception e) {
+            Log.e(EmulatorDebug.LOG_TAG, "Error in checkForFont()", e);
+        }
     }
 
     @SuppressLint("RtlHardcoded")
@@ -103,7 +119,11 @@ public class TermuxFloatView extends LinearLayout {
         layoutParams.flags = computeLayoutFlags(true);
         layoutParams.width = widthAndHeight;
         layoutParams.height = widthAndHeight;
-        layoutParams.type = WindowManager.LayoutParams.TYPE_PHONE;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            layoutParams.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
+        } else {
+            layoutParams.type = WindowManager.LayoutParams.TYPE_PHONE;
+        }
         layoutParams.format = PixelFormat.RGBA_8888;
 
         layoutParams.gravity = Gravity.TOP | Gravity.LEFT;

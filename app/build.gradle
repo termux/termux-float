@@ -23,7 +23,7 @@ android {
 
 dependencies {
     compile 'com.android.support:support-annotations:27.0.0'
-    compile 'com.termux:terminal-view:0.49'
+    compile 'com.termux:terminal-view:0.50'
 
     testCompile 'junit:junit:4.12'
 }

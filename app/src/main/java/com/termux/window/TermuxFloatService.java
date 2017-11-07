@@ -92,7 +92,7 @@ public class TermuxFloatService extends Service {
 
         Toast toast = Toast.makeText(this, R.string.initial_instruction_toast, Toast.LENGTH_LONG);
         toast.setGravity(Gravity.CENTER, 0, 0);
-        TextView v = (TextView) toast.getView().findViewById(android.R.id.message);
+        TextView v = toast.getView().findViewById(android.R.id.message);
         if (v != null) v.setGravity(Gravity.CENTER);
         toast.show();
 
@@ -232,7 +232,6 @@ public class TermuxFloatService extends Service {
 
             @Override
             public void onClipboardText(TerminalSession pastingSession, String text) {
-                mFloatingWindow.showToast("Clipboard set:\n\"" + text + "\"", true);
                 ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
                 clipboard.setPrimaryClip(new ClipData(null, new String[]{"text/plain"}, new ClipData.Item(text)));
             }

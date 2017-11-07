@@ -30,11 +30,6 @@ public class TermuxFloatView extends LinearLayout {
 
     TerminalView mTerminalView;
 
-    /**
-     * The last toast shown, used cancel current toast before showing new in {@link #showToast(String, boolean)}.
-     */
-    Toast mLastToast;
-
     private boolean withFocus = true;
     int initialX;
     int initialY;
@@ -86,7 +81,7 @@ public class TermuxFloatView extends LinearLayout {
     }
 
     public void initializeFloatingWindow() {
-        mTerminalView = (TerminalView) findViewById(R.id.terminal_view);
+        mTerminalView = findViewById(R.id.terminal_view);
         mTerminalView.setOnKeyListener(new TermuxFloatViewClient(this));
     }
 
@@ -205,16 +200,6 @@ public class TermuxFloatView extends LinearLayout {
         layoutParams.flags = computeLayoutFlags(withFocus);
         mWindowManager.updateViewLayout(this, layoutParams);
         setAlpha(newFocus ? ALPHA_FOCUS : ALPHA_NOT_FOCUS);
-    }
-
-    /**
-     * Show a toast and dismiss the last one if still visible.
-     */
-    void showToast(String text, boolean longDuration) {
-        if (mLastToast != null) mLastToast.cancel();
-        mLastToast = Toast.makeText(getContext(), text, longDuration ? Toast.LENGTH_LONG : Toast.LENGTH_SHORT);
-        mLastToast.setGravity(Gravity.TOP, 0, 0);
-        mLastToast.show();
     }
 
     public void closeFloatingWindow() {

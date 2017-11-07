@@ -2,6 +2,7 @@ package com.termux.window;
 
 import android.annotation.SuppressLint;
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -11,23 +12,24 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
+import android.os.Build;
 import android.os.IBinder;
 import android.os.Vibrator;
 import android.preference.PreferenceManager;
-import android.util.Log;
+import android.support.annotation.RequiresApi;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.termux.terminal.EmulatorDebug;
 import com.termux.terminal.TerminalSession;
 
 import java.io.File;
-import java.io.IOException;
 
 public class TermuxFloatService extends Service {
+
+    private static final String NOTIFICATION_CHANNEL_ID = "termux_notification_channel";
 
     public static final String ACTION_HIDE = "com.termux.float.hide";
     public static final String ACTION_SHOW = "com.termux.float.show";
@@ -99,6 +101,18 @@ public class TermuxFloatService extends Service {
         startForeground(NOTIFICATION_ID, buildNotification());
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private void setupNotificationChannel() {
+        String channelName = "Termux";
+        String channelDescription = "Notifications from Termux";
+        int importance = NotificationManager.IMPORTANCE_LOW;
+
+        NotificationChannel channel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, channelName, importance);
+        channel.setDescription(channelDescription);
+        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        manager.createNotificationChannel(channel);
+    }
+
     private Notification buildNotification() {
         final Resources res = getResources();
         final String contentTitle = res.getString(R.string.notification_title);
@@ -111,7 +125,13 @@ public class TermuxFloatService extends Service {
             .setPriority(Notification.PRIORITY_MIN).setSmallIcon(R.mipmap.ic_service_notification)
             .setColor(0xFF000000)
             .setContentIntent(PendingIntent.getService(this, 0, actionIntent, 0))
-            .setOngoing(true).setShowWhen(false);
+            .setOngoing(true)
+            .setShowWhen(false);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            setupNotificationChannel();
+            builder.setChannelId(NOTIFICATION_CHANNEL_ID);
+        }
 
         //final int messageId = mVisibleWindow ? R.string.toggle_hide : R.string.toggle_show;
         //builder.addAction(android.R.drawable.ic_menu_preferences, res.getString(messageId), PendingIntent.getService(this, 0, actionIntent, 0));
@@ -178,31 +198,13 @@ public class TermuxFloatService extends Service {
         String executablePath = null;
         String[] args;
         String shellName = null;
-        File shell = new File(HOME_PATH, ".termux/shell");
-        if (shell.exists()) {
-            try {
-                File canonicalFile = shell.getCanonicalFile();
-                if (canonicalFile.isFile() && canonicalFile.canExecute()) {
-                    executablePath = canonicalFile.getAbsolutePath();
-                    String[] parts = executablePath.split("/");
-                    shellName = "-" + parts[parts.length - 1];
-                } else {
-                    Log.w(EmulatorDebug.LOG_TAG, "$HOME/.termux/shell points to non-executable shell: " + canonicalFile.getAbsolutePath());
-                }
-            } catch (IOException e) {
-                Log.e(EmulatorDebug.LOG_TAG, "Error checking $HOME/.termux/shell", e);
-            }
-        }
 
-        if (executablePath == null) {
-            // Try bash, zsh and ash in that order:
-            for (String shellBinary : new String[]{"bash", "zsh", "ash"}) {
-                File shellFile = new File(PREFIX_PATH + "/bin/" + shellBinary);
-                if (shellFile.canExecute()) {
-                    executablePath = shellFile.getAbsolutePath();
-                    shellName = "-" + shellBinary;
-                    break;
-                }
+        for (String shellBinary : new String[]{"login", "bash", "zsh"}) {
+            File shellFile = new File(PREFIX_PATH + "/bin/" + shellBinary);
+            if (shellFile.canExecute()) {
+                executablePath = shellFile.getAbsolutePath();
+                shellName = "-" + shellBinary;
+                break;
             }
         }
 

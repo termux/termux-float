@@ -14,5 +14,4 @@ public class TermuxFloatActivity extends Activity {
         startService(new Intent(this, TermuxFloatService.class));
         finish();
     }
-
 }

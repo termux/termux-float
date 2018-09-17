@@ -29,5 +29,4 @@ public class TermuxFloatPrefs {
         layout.width = prefs.getInt(PREF_WIDTH, 500);
         layout.height = prefs.getInt(PREF_HEIGHT, 800);
     }
-
 }

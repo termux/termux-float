@@ -215,5 +215,4 @@ public class TermuxFloatViewClient implements TerminalViewClient {
         }
         return false;
     }
-
 }

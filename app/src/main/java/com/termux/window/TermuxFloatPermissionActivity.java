@@ -31,5 +31,4 @@ public class TermuxFloatPermissionActivity extends Activity {
             finish();
         }
     }
-
 }

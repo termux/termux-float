@@ -245,7 +245,6 @@ public class TermuxFloatService extends Service {
 
             @Override
             public void onColorsChanged(TerminalSession session) {
-
             }
         });
     }

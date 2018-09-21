@@ -164,12 +164,7 @@ public class TermuxFloatView extends LinearLayout {
     }
 
     void showTouchKeyboard() {
-        mTerminalView.post(new Runnable() {
-            @Override
-            public void run() {
-                imm.showSoftInput(mTerminalView, InputMethodManager.SHOW_IMPLICIT);
-            }
-        });
+        mTerminalView.post(() -> imm.showSoftInput(mTerminalView, InputMethodManager.SHOW_IMPLICIT));
     }
 
     void updateLongPressMode(boolean newValue) {
@@ -225,5 +220,4 @@ public class TermuxFloatView extends LinearLayout {
     public void closeFloatingWindow() {
         mWindowManager.removeView(this);
     }
-
 }

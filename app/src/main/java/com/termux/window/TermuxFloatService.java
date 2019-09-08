@@ -16,6 +16,7 @@ import android.os.Build;
 import android.os.IBinder;
 import android.os.Vibrator;
 import android.preference.PreferenceManager;
+import android.util.TypedValue;
 import androidx.annotation.RequiresApi;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -49,11 +50,12 @@ public class TermuxFloatService extends Service {
      */
     private static final int NOTIFICATION_ID = 0xdead1337;
 
-    private static final int MIN_FONTSIZE = 16;
-    private static final int DEFAULT_FONTSIZE = 24;
+    private int MIN_FONTSIZE;
+    private static final int MAX_FONTSIZE = 256;
     private static final String FONTSIZE_KEY = "fontsize";
     private TermuxFloatView mFloatingWindow;
     private int mFontSize;
+
     private boolean mVisibleWindow = true;
 
     @Override
@@ -61,17 +63,37 @@ public class TermuxFloatService extends Service {
         return null;
     }
 
+    /**
+     * If value is not in the range [min, max], set it to either min or max.
+     */
+    static int clamp(int value, int min, int max) {
+        return Math.min(Math.max(value, min), max);
+    }
+
     @SuppressLint({"InflateParams"})
     @Override
     public void onCreate() {
         super.onCreate();
 
+        float dipInPixels = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 1, getApplicationContext().getResources().getDisplayMetrics());
+
+        // This is a bit arbitrary and sub-optimal. We want to give a sensible default for minimum font size
+        // to prevent invisible text due to zoom be mistake:
+        MIN_FONTSIZE = (int) (4f * dipInPixels);
+
+        // http://www.google.com/design/spec/style/typography.html#typography-line-height
+        int defaultFontSize = Math.round(12 * dipInPixels);
+        // Make it divisible by 2 since that is the minimal adjustment step:
+        if (defaultFontSize % 2 == 1) defaultFontSize--;
+
         final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         try {
-            mFontSize = Integer.parseInt(prefs.getString(FONTSIZE_KEY, Integer.toString(DEFAULT_FONTSIZE)));
+            mFontSize = Integer.parseInt(prefs.getString(FONTSIZE_KEY, Integer.toString(defaultFontSize)));
         } catch (NumberFormatException | ClassCastException e) {
-            mFontSize = DEFAULT_FONTSIZE;
+            mFontSize = defaultFontSize;
         }
+
+        mFontSize = clamp(mFontSize, MIN_FONTSIZE, MAX_FONTSIZE);
 
         TermuxFloatView floatingWindow = (TermuxFloatView) ((LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE)).inflate(R.layout.activity_main, null);
         floatingWindow.initializeFloatingWindow();

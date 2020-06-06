@@ -38,10 +38,10 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.annotation:annotation:1.0.1'
+    implementation 'androidx.annotation:annotation:1.1.0'
     implementation 'com.termux:terminal-view:0.50'
 
-    testImplementation 'junit:junit:4.12'
+    testImplementation 'junit:junit:4.13'
 }
 
 task versionName {

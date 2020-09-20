@@ -172,6 +172,9 @@ public class TermuxFloatService extends Service {
         } else if (!mVisibleWindow) {
             // Show window if hidden when launched through launcher icon.
             setVisible(true);
+        } else if (mVisibleWindow) {
+            // Launcher icon toggles shown window to hidden. Example prior art: pnapp.pncalc. 
+            setVisible(false);
         }
         return Service.START_NOT_STICKY;
     }

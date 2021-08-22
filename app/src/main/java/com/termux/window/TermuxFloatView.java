@@ -13,6 +13,7 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.ScaleGestureDetector.OnScaleGestureListener;
+import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
@@ -102,11 +103,10 @@ public class TermuxFloatView extends LinearLayout {
 
     private void initWindowControls() {
         mWindowControls = findViewById(R.id.window_controls);
+        mWindowControls.setOnClickListener(v -> changeFocus(true));
 
         Button minimizeButton = findViewById(R.id.minimize_button);
-        minimizeButton.setOnClickListener(v -> {
-            mFloatingBubbleManager.toggleBubble();
-        });
+        minimizeButton.setOnClickListener(v -> mFloatingBubbleManager.toggleBubble());
 
         Button exitButton = findViewById(R.id.exit_button);
         exitButton.setOnClickListener(v -> exit());

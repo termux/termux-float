@@ -61,6 +61,7 @@ public class FloatingBubbleManager {
         termuxFloatView.setBackgroundResource(R.drawable.round_button_with_outline);
         termuxFloatView.setClipToOutline(true);
         termuxFloatView.hideTouchKeyboard();
+        termuxFloatView.changeFocus(false);
 
         ViewGroup windowControls = termuxFloatView.findViewById(R.id.window_controls);
         windowControls.setVisibility(View.GONE);

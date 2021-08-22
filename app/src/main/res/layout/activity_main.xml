@@ -4,7 +4,38 @@
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     android:background="@drawable/floating_window_background"
+    android:orientation="vertical"
     android:padding="1px" >
+
+    <LinearLayout
+        android:id="@+id/window_controls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#ff333333">
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+        <Button
+            android:id="@+id/minimize_button"
+            android:layout_width="32dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:background="#0f0"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:text="M" />
+        <Button
+            android:id="@+id/exit_button"
+            android:layout_width="32dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:background="#F00"
+            android:layout_marginStart="8dp"
+            android:text="X" />
+    </LinearLayout>
 
     <com.termux.view.TerminalView
         android:id="@+id/terminal_view"

@@ -213,7 +213,7 @@ public class TermuxFloatView extends LinearLayout {
         isInLongPressState = newValue;
         mFloatingBubbleManager.updateLongPressBackgroundResource(isInLongPressState);
         setAlpha(newValue ? ALPHA_MOVING : (withFocus ? ALPHA_FOCUS : ALPHA_NOT_FOCUS));
-        if (newValue) {
+        if (newValue && !mFloatingBubbleManager.isMinimized()) {
             Toast toast = Toast.makeText(getContext(), R.string.after_long_press, Toast.LENGTH_SHORT);
             toast.setGravity(Gravity.CENTER, 0, 0);
             toast.show();

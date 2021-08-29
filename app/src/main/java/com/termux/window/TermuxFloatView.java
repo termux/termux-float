@@ -192,13 +192,15 @@ public class TermuxFloatView extends LinearLayout {
     }
 
     private boolean didClickInsideWindowControls(float touchX, float touchY) {
+        if (mWindowControls.getVisibility() == View.GONE) {
+            return false;
+        }
         mWindowControls.getLocationOnScreen(windowControlsLocation);
         int controlsX = windowControlsLocation[0];
         int controlsY = windowControlsLocation[1];
 
-        boolean clickedInsideWindowControls = (touchX >= controlsX && touchX <= controlsX + mWindowControls.getWidth()) &&
+        return (touchX >= controlsX && touchX <= controlsX + mWindowControls.getWidth()) &&
                 (touchY >= controlsY && touchY <= controlsY + mWindowControls.getHeight());
-        return clickedInsideWindowControls;
     }
 
     void showTouchKeyboard() {

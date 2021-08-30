@@ -2,6 +2,7 @@ package com.termux.window;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.graphics.Typeface;
@@ -12,8 +13,11 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.ScaleGestureDetector.OnScaleGestureListener;
+import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
@@ -35,6 +39,8 @@ public class TermuxFloatView extends LinearLayout {
     InputMethodManager imm;
 
     TerminalView mTerminalView;
+    ViewGroup mWindowControls;
+    FloatingBubbleManager mFloatingBubbleManager;
 
     private boolean withFocus = true;
     int initialX;
@@ -45,6 +51,8 @@ public class TermuxFloatView extends LinearLayout {
     boolean isInLongPressState;
 
     final int[] location = new int[2];
+
+    final int[] windowControlsLocation = new int[2];
 
     final ScaleGestureDetector mScaleDetector = new ScaleGestureDetector(getContext(), new OnScaleGestureListener() {
         private static final int MIN_SIZE = 50;
@@ -89,6 +97,19 @@ public class TermuxFloatView extends LinearLayout {
     public void initializeFloatingWindow() {
         mTerminalView = findViewById(R.id.terminal_view);
         mTerminalView.setOnKeyListener(new TermuxFloatViewClient(this));
+        mFloatingBubbleManager = new FloatingBubbleManager(this);
+        initWindowControls();
+    }
+
+    private void initWindowControls() {
+        mWindowControls = findViewById(R.id.window_controls);
+        mWindowControls.setOnClickListener(v -> changeFocus(true));
+
+        Button minimizeButton = findViewById(R.id.minimize_button);
+        minimizeButton.setOnClickListener(v -> mFloatingBubbleManager.toggleBubble());
+
+        Button exitButton = findViewById(R.id.exit_button);
+        exitButton.setOnClickListener(v -> exit());
     }
 
     @Override
@@ -147,6 +168,13 @@ public class TermuxFloatView extends LinearLayout {
         int y = location[1];
         float touchX = event.getRawX();
         float touchY = event.getRawY();
+
+        if (didClickInsideWindowControls(touchX, touchY)) {
+            // avoid unintended focus event if we are tapping on our window controls
+            // so that keyboard doesn't possibly show briefly
+            return false;
+        }
+
         boolean clickedInside = (touchX >= x) && (touchX <= (x + layoutParams.width)) && (touchY >= y) && (touchY <= (y + layoutParams.height));
 
         switch (event.getAction()) {
@@ -163,15 +191,31 @@ public class TermuxFloatView extends LinearLayout {
         return false;
     }
 
+    private boolean didClickInsideWindowControls(float touchX, float touchY) {
+        if (mWindowControls.getVisibility() == View.GONE) {
+            return false;
+        }
+        mWindowControls.getLocationOnScreen(windowControlsLocation);
+        int controlsX = windowControlsLocation[0];
+        int controlsY = windowControlsLocation[1];
+
+        return (touchX >= controlsX && touchX <= controlsX + mWindowControls.getWidth()) &&
+                (touchY >= controlsY && touchY <= controlsY + mWindowControls.getHeight());
+    }
+
     void showTouchKeyboard() {
         mTerminalView.post(() -> imm.showSoftInput(mTerminalView, InputMethodManager.SHOW_IMPLICIT));
     }
 
+    void hideTouchKeyboard() {
+        mTerminalView.post(() -> imm.hideSoftInputFromWindow(mTerminalView.getWindowToken(), InputMethodManager.HIDE_IMPLICIT_ONLY));
+    }
+
     void updateLongPressMode(boolean newValue) {
         isInLongPressState = newValue;
-        setBackgroundResource(newValue ? R.drawable.floating_window_background_resize : R.drawable.floating_window_background);
+        mFloatingBubbleManager.updateLongPressBackgroundResource(isInLongPressState);
         setAlpha(newValue ? ALPHA_MOVING : (withFocus ? ALPHA_FOCUS : ALPHA_NOT_FOCUS));
-        if (newValue) {
+        if (newValue && !mFloatingBubbleManager.isMinimized()) {
             Toast toast = Toast.makeText(getContext(), R.string.after_long_press, Toast.LENGTH_SHORT);
             toast.setGravity(Gravity.CENTER, 0, 0);
             toast.show();
@@ -207,6 +251,9 @@ public class TermuxFloatView extends LinearLayout {
      * Visually indicate focus and show the soft input as needed.
      */
     void changeFocus(boolean newFocus) {
+        if (newFocus && mFloatingBubbleManager.isMinimized()) {
+            mFloatingBubbleManager.displayAsFloatingWindow();
+        }
         if (newFocus == withFocus) {
             if (newFocus) showTouchKeyboard();
             return;
@@ -219,5 +266,12 @@ public class TermuxFloatView extends LinearLayout {
 
     public void closeFloatingWindow() {
         mWindowManager.removeView(this);
+        mFloatingBubbleManager.cleanup();
+        mFloatingBubbleManager = null;
+    }
+
+    private void exit() {
+        Intent intent = new Intent(getContext(), TermuxFloatService.class);
+        getContext().stopService(intent);
     }
 }

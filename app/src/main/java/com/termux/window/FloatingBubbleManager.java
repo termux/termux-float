@@ -5,6 +5,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 
+import com.termux.shared.view.ViewUtils;
 import com.termux.view.TerminalView;
 
 /**
@@ -12,9 +13,10 @@ import com.termux.view.TerminalView;
  * to its original display.
  */
 public class FloatingBubbleManager {
-    private static final int BUBBLE_SIZE = 200;
+    private static final int DEFAULT_BUBBLE_SIZE_DP = 80;
 
     private TermuxFloatView mTermuxFloatView;
+    private final int BUBBLE_SIZE_PX;
 
     private boolean mIsMinimized;
 
@@ -26,9 +28,9 @@ public class FloatingBubbleManager {
     private Drawable mOriginalTerminalViewBackground;
     private Drawable mOriginalFloatViewBackground;
 
-
     public FloatingBubbleManager(TermuxFloatView termuxFloatView) {
         mTermuxFloatView = termuxFloatView;
+        BUBBLE_SIZE_PX = ViewUtils.dpToPx(mTermuxFloatView.getContext(), DEFAULT_BUBBLE_SIZE_DP);
     }
 
     public void toggleBubble() {
@@ -50,8 +52,9 @@ public class FloatingBubbleManager {
         captureOriginalLayoutValues();
 
         WindowManager.LayoutParams layoutParams = getLayoutParams();
-        layoutParams.width = BUBBLE_SIZE;
-        layoutParams.height = BUBBLE_SIZE;
+
+        layoutParams.width = BUBBLE_SIZE_PX;
+        layoutParams.height = BUBBLE_SIZE_PX;
 
         TerminalView terminalView = getTerminalView();
         terminalView.setBackgroundResource(R.drawable.round_button);

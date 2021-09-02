@@ -4,7 +4,7 @@
         <shape android:shape="oval">
             <solid android:color="@android:color/black" />
             <stroke android:color="@android:color/white"
-                android:width="1dp" />
+                android:width="@dimen/bubble_outline_stroke_width" />
         </shape>
     </item>
 </selector>

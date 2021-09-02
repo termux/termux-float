@@ -1,8 +1,10 @@
 package com.termux.window;
 
+import android.graphics.Outline;
 import android.graphics.drawable.Drawable;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
 import android.view.WindowManager;
 
 import com.termux.shared.view.ViewUtils;
@@ -57,7 +59,15 @@ public class FloatingBubbleManager {
         layoutParams.height = BUBBLE_SIZE_PX;
 
         TerminalView terminalView = getTerminalView();
-        terminalView.setBackgroundResource(R.drawable.round_button);
+        final int strokeWidth = (int) terminalView.getResources().getDimension(R.dimen.bubble_outline_stroke_width);
+        terminalView.setOutlineProvider(new ViewOutlineProvider() {
+            @SuppressWarnings("SuspiciousNameCombination")
+            @Override
+            public void getOutline(View view, Outline outline) {
+                // shrink TerminalView clipping a bit so it doesn't cut off our bubble outline
+                outline.setOval(strokeWidth, strokeWidth, view.getWidth() - strokeWidth, view.getHeight() - strokeWidth);
+            }
+        });
         terminalView.setClipToOutline(true);
 
         TermuxFloatView termuxFloatView = getTermuxFloatView();
@@ -82,6 +92,7 @@ public class FloatingBubbleManager {
 
         TerminalView terminalView = getTerminalView();
         terminalView.setBackground(mOriginalTerminalViewBackground);
+        terminalView.setOutlineProvider(null);
         terminalView.setClipToOutline(false);
 
         TermuxFloatView termuxFloatView = getTermuxFloatView();

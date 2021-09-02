@@ -5,30 +5,41 @@ import android.media.AudioManager;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
-import android.view.inputmethod.InputMethodManager;
 
+import com.termux.shared.terminal.TermuxTerminalViewClientBase;
+import com.termux.shared.view.KeyboardUtils;
 import com.termux.terminal.KeyHandler;
 import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
-import com.termux.view.TerminalViewClient;
 
-public class TermuxFloatViewClient implements TerminalViewClient {
+public class TermuxFloatViewClient extends TermuxTerminalViewClientBase {
 
-    private final TermuxFloatView view;
+    private final TermuxFloatView mView;
     /**
      * Keeping track of the special keys acting as Ctrl and Fn for the soft keyboard and other hardware keys.
      */
     boolean mVirtualControlKeyDown, mVirtualFnKeyDown;
 
     public TermuxFloatViewClient(TermuxFloatView view) {
-        this.view = view;
+        this.mView = view;
+    }
+
+    /**
+     * Should be called when TermuxFloatView.initFloatView() is called
+     */
+    public void initFloatView() {
+        mView.getTerminalView().setTextSize(mView.getPreferences().getFontSize());
+
+        // Set {@link TerminalView#TERMINAL_VIEW_KEY_LOGGING_ENABLED} value
+        boolean isTerminalViewKeyLoggingEnabled = mView.getPreferences().isTerminalViewKeyLoggingEnabled(true);
+        mView.getTerminalView().setIsTerminalViewKeyLoggingEnabled(isTerminalViewKeyLoggingEnabled);
     }
 
     @Override
     public float onScale(float scale) {
         if (scale < 0.9f || scale > 1.1f) {
             boolean increase = scale > 1.f;
-            ((TermuxFloatService) view.getContext()).changeFontSize(increase);
+            changeFontSize(increase);
             return 1.0f;
         }
         return scale;
@@ -36,12 +47,12 @@ public class TermuxFloatViewClient implements TerminalViewClient {
 
     @Override
     public boolean onLongPress(MotionEvent event) {
-        view.updateLongPressMode(true);
-        view.getLocationOnScreen(view.location);
-        view.initialX = view.location[0];
-        view.initialY = view.location[1];
-        view.initialTouchX = event.getRawX();
-        view.initialTouchY = event.getRawY();
+        mView.updateLongPressMode(true);
+        mView.getLocationOnScreen(mView.location);
+        mView.initialX = mView.location[0];
+        mView.initialY = mView.location[1];
+        mView.initialTouchX = event.getRawX();
+        mView.initialTouchY = event.getRawY();
         return true;
     }
 
@@ -64,7 +75,8 @@ public class TermuxFloatViewClient implements TerminalViewClient {
     public boolean onKeyDown(int keyCode, KeyEvent e, TerminalSession session) {
         if (handleVirtualKeys(keyCode, e, true)) return true;
 
-        if (e.isCtrlPressed() && e.isAltPressed()) {
+        if (!mView.getProperties().areHardwareKeyboardShortcutsDisabled() &&
+                e.isCtrlPressed() && e.isAltPressed()) {
             // Get the unmodified code point:
             int unicodeChar = e.getUnicodeChar(0);
 
@@ -73,8 +85,13 @@ public class TermuxFloatViewClient implements TerminalViewClient {
             } else if (unicodeChar == 'f'/* full screen */) {
                 // TODO: Toggle full screen.
             } else if (unicodeChar == 'k'/* keyboard */) {
-                InputMethodManager imm = (InputMethodManager) view.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-                imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
+                KeyboardUtils.toggleSoftKeyboard(mView.getContext());
+            } else if (unicodeChar == '+' || e.getUnicodeChar(KeyEvent.META_SHIFT_ON) == '+') {
+                // We also check for the shifted char here since shift may be required to produce '+',
+                // see https://github.com/termux/termux-api/issues/2
+                changeFontSize(true);
+            } else if (unicodeChar == '-') {
+                changeFontSize(false);
             }
             return true;
         }
@@ -181,7 +198,7 @@ public class TermuxFloatViewClient implements TerminalViewClient {
                 // Volume control.
                 case 'v':
                     resultingCodePoint = -1;
-                    AudioManager audio = (AudioManager) view.getContext().getSystemService(Context.AUDIO_SERVICE);
+                    AudioManager audio = (AudioManager) mView.getContext().getSystemService(Context.AUDIO_SERVICE);
                     audio.adjustSuggestedStreamVolume(AudioManager.ADJUST_SAME, AudioManager.USE_DEFAULT_STREAM_TYPE, AudioManager.FLAG_SHOW_UI);
                     break;
             }
@@ -214,5 +231,12 @@ public class TermuxFloatViewClient implements TerminalViewClient {
             return true;
         }
         return false;
+    }
+
+
+
+    public void changeFontSize(boolean increase) {
+        mView.getPreferences().changeFontSize(increase);
+        mView.getTerminalView().setTextSize(mView.getPreferences().getFontSize());
     }
 }

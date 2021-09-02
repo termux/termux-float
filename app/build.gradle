@@ -8,6 +8,10 @@ android {
         targetSdkVersion project.properties.targetSdkVersion.toInteger()
         versionCode 14
         versionName "0.14"
+
+        manifestPlaceholders.TERMUX_PACKAGE_NAME = "com.termux"
+        manifestPlaceholders.TERMUX_APP_NAME = "Termux"
+        manifestPlaceholders.TERMUX_FLOAT_APP_NAME = "Termux:Float"
     }
 
     signingConfigs {
@@ -49,7 +53,8 @@ android {
 
 dependencies {
     implementation 'androidx.annotation:annotation:1.2.0'
-    implementation 'com.termux:terminal-view:0.106'
+    implementation 'com.termux.termux-app:termux-shared:9f1203f049'
+    implementation 'com.termux.termux-app:terminal-view:9f1203f049'
 
     testImplementation 'junit:junit:4.13.2'
 }

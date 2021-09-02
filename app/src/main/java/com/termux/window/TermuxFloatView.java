@@ -8,7 +8,6 @@ import android.graphics.Point;
 import android.graphics.Typeface;
 import android.os.Build;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
@@ -16,13 +15,16 @@ import android.view.ScaleGestureDetector.OnScaleGestureListener;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.Toast;
 
-import com.termux.terminal.EmulatorDebug;
+import com.termux.shared.logger.Logger;
+import com.termux.shared.settings.preferences.TermuxFloatAppSharedPreferences;
+import com.termux.shared.settings.properties.TermuxSharedProperties;
+import com.termux.shared.termux.TermuxConstants;
+import com.termux.shared.view.KeyboardUtils;
 import com.termux.view.TerminalView;
+import com.termux.view.TerminalViewClient;
 
 import java.io.File;
 
@@ -36,11 +38,26 @@ public class TermuxFloatView extends LinearLayout {
 
     final WindowManager.LayoutParams layoutParams = new WindowManager.LayoutParams();
     WindowManager mWindowManager;
-    InputMethodManager imm;
 
     TerminalView mTerminalView;
     ViewGroup mWindowControls;
     FloatingBubbleManager mFloatingBubbleManager;
+
+    /**
+     *  The {@link TerminalViewClient} interface implementation to allow for communication between
+     *  {@link TerminalView} and {@link TermuxFloatView}.
+     */
+    TermuxFloatViewClient mTermuxFloatViewClient;
+
+    /**
+     * Termux Float app shared preferences manager.
+     */
+    private TermuxFloatAppSharedPreferences mPreferences;
+
+    /**
+     * Termux app shared properties manager, loaded from termux.properties
+     */
+    private TermuxSharedProperties mProperties;
 
     private boolean withFocus = true;
     int initialX;
@@ -53,6 +70,8 @@ public class TermuxFloatView extends LinearLayout {
     final int[] location = new int[2];
 
     final int[] windowControlsLocation = new int[2];
+
+    private static final String LOG_TAG = "TermuxFloatView";
 
     final ScaleGestureDetector mScaleDetector = new ScaleGestureDetector(getContext(), new OnScaleGestureListener() {
         private static final int MIN_SIZE = 50;
@@ -71,7 +90,10 @@ public class TermuxFloatView extends LinearLayout {
             layoutParams.width = Math.max(MIN_SIZE, layoutParams.width);
             layoutParams.height = Math.max(MIN_SIZE, layoutParams.height);
             mWindowManager.updateViewLayout(TermuxFloatView.this, layoutParams);
-            TermuxFloatPrefs.saveWindowSize(getContext(), layoutParams.width, layoutParams.height);
+            if (mPreferences != null) {
+                mPreferences.setWindowWidth(layoutParams.width);
+                mPreferences.setWindowHeight(layoutParams.height);
+            }
             return true;
         }
 
@@ -94,9 +116,24 @@ public class TermuxFloatView extends LinearLayout {
         }
     }
 
-    public void initializeFloatingWindow() {
+    public void initFloatView() {
+        Logger.logDebug(LOG_TAG, "initFloatView");
+
+        // Load termux shared properties
+        mProperties = new TermuxSharedProperties(getContext());
+
+        // Load termux float shared preferences
+        // This will also fail if TermuxConstants.TERMUX_FLOAT_PACKAGE_NAME does not equal applicationId
+        mPreferences = TermuxFloatAppSharedPreferences.build(getContext(), true);
+        if (mPreferences == null) {
+            return;
+        }
+
         mTerminalView = findViewById(R.id.terminal_view);
-        mTerminalView.setOnKeyListener(new TermuxFloatViewClient(this));
+        mTermuxFloatViewClient = new TermuxFloatViewClient(this);
+        mTerminalView.setTerminalViewClient(mTermuxFloatViewClient);
+        mTermuxFloatViewClient.initFloatView();
+
         mFloatingBubbleManager = new FloatingBubbleManager(this);
         initWindowControls();
     }
@@ -126,11 +163,11 @@ public class TermuxFloatView extends LinearLayout {
 
     void checkForFont() {
         try {
-            @SuppressLint("SdCardPath") File fontFile = new File("/data/data/com.termux/files/home/.termux/font.ttf");
+            @SuppressLint("SdCardPath") File fontFile = TermuxConstants.TERMUX_FONT_FILE;
             final Typeface newTypeface = (fontFile.exists() && fontFile.length() > 0) ? Typeface.createFromFile(fontFile) : Typeface.MONOSPACE;
             mTerminalView.setTypeface(newTypeface);
         } catch (Exception e) {
-            Log.e(EmulatorDebug.LOG_TAG, "Error in checkForFont()", e);
+            Logger.logStackTraceWithMessage(LOG_TAG, "Error in checkForFont()", e);
         }
     }
 
@@ -148,11 +185,17 @@ public class TermuxFloatView extends LinearLayout {
         layoutParams.format = PixelFormat.RGBA_8888;
 
         layoutParams.gravity = Gravity.TOP | Gravity.LEFT;
-        TermuxFloatPrefs.applySavedGeometry(getContext(), layoutParams);
+
+        if (mPreferences != null) {
+            layoutParams.x = mPreferences.getWindowX();
+            layoutParams.y = mPreferences.getWindowY();
+            layoutParams.width = mPreferences.getWindowWidth();
+            layoutParams.height = mPreferences.getWindowHeight();
+        }
 
         mWindowManager = (WindowManager) getContext().getSystemService(Context.WINDOW_SERVICE);
-        mWindowManager.addView(this, layoutParams);
-        imm = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (getWindowToken() == null)
+            mWindowManager.addView(this, layoutParams);
         showTouchKeyboard();
     }
 
@@ -204,22 +247,20 @@ public class TermuxFloatView extends LinearLayout {
     }
 
     void showTouchKeyboard() {
-        mTerminalView.post(() -> imm.showSoftInput(mTerminalView, InputMethodManager.SHOW_IMPLICIT));
+        mTerminalView.post(() -> KeyboardUtils.showSoftKeyboard(getContext(), mTerminalView));
+
     }
 
     void hideTouchKeyboard() {
-        mTerminalView.post(() -> imm.hideSoftInputFromWindow(mTerminalView.getWindowToken(), InputMethodManager.HIDE_IMPLICIT_ONLY));
+        mTerminalView.post(() -> KeyboardUtils.hideSoftKeyboard(getContext(), mTerminalView));
     }
 
     void updateLongPressMode(boolean newValue) {
         isInLongPressState = newValue;
         mFloatingBubbleManager.updateLongPressBackgroundResource(isInLongPressState);
         setAlpha(newValue ? ALPHA_MOVING : (withFocus ? ALPHA_FOCUS : ALPHA_NOT_FOCUS));
-        if (newValue && !mFloatingBubbleManager.isMinimized()) {
-            Toast toast = Toast.makeText(getContext(), R.string.after_long_press, Toast.LENGTH_SHORT);
-            toast.setGravity(Gravity.CENTER, 0, 0);
-            toast.show();
-        }
+        if (newValue && !mFloatingBubbleManager.isMinimized())
+            Logger.showToast(getContext(), getContext().getString(R.string.after_long_press), false);
     }
 
     /**
@@ -236,7 +277,10 @@ public class TermuxFloatView extends LinearLayout {
                     layoutParams.x = Math.min(DISPLAY_WIDTH - layoutParams.width, Math.max(0, initialX + (int) (event.getRawX() - initialTouchX)));
                     layoutParams.y = Math.min(DISPLAY_HEIGHT - layoutParams.height, Math.max(0, initialY + (int) (event.getRawY() - initialTouchY)));
                     mWindowManager.updateViewLayout(TermuxFloatView.this, layoutParams);
-                    TermuxFloatPrefs.saveWindowPosition(getContext(), layoutParams.x, layoutParams.y);
+                    if (mPreferences != null) {
+                        mPreferences.setWindowX(layoutParams.x);
+                        mPreferences.setWindowY(layoutParams.y);
+                    }
                     break;
                 case MotionEvent.ACTION_UP:
                     updateLongPressMode(false);
@@ -260,18 +304,34 @@ public class TermuxFloatView extends LinearLayout {
         }
         withFocus = newFocus;
         layoutParams.flags = computeLayoutFlags(withFocus);
-        mWindowManager.updateViewLayout(this, layoutParams);
+        if (getWindowToken() != null)
+            mWindowManager.updateViewLayout(this, layoutParams);
         setAlpha(newFocus ? ALPHA_FOCUS : ALPHA_NOT_FOCUS);
     }
 
     public void closeFloatingWindow() {
-        mWindowManager.removeView(this);
+        if (getWindowToken() != null)
+            mWindowManager.removeView(this);
+
         mFloatingBubbleManager.cleanup();
         mFloatingBubbleManager = null;
     }
 
     private void exit() {
-        Intent intent = new Intent(getContext(), TermuxFloatService.class);
-        getContext().stopService(intent);
+        Intent exitIntent = new Intent(getContext(), TermuxFloatService.class).setAction(TermuxConstants.TERMUX_FLOAT_APP.TERMUX_FLOAT_SERVICE.ACTION_STOP_SERVICE);
+        getContext().startService(exitIntent);
+    }
+
+
+    public TerminalView getTerminalView() {
+        return mTerminalView;
+    }
+
+    public TermuxFloatAppSharedPreferences getPreferences() {
+        return mPreferences;
+    }
+
+    public TermuxSharedProperties getProperties() {
+        return mProperties;
     }
 }

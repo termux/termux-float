@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.termux.window"
-    android:sharedUserId="com.termux">
+    android:sharedUserId="${TERMUX_PACKAGE_NAME}">
 
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
@@ -11,6 +11,7 @@
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
+        android:name=".TermuxFloatApplication"
         android:allowBackup="true"
         android:extractNativeLibs="true"
         android:icon="@drawable/ic_launcher"

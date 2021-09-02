@@ -2,273 +2,241 @@ package com.termux.window;
 
 import android.annotation.SuppressLint;
 import android.app.Notification;
-import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
-import android.content.ClipData;
-import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.os.Build;
 import android.os.IBinder;
-import android.os.Vibrator;
-import android.preference.PreferenceManager;
-import android.util.TypedValue;
-import androidx.annotation.RequiresApi;
-import android.view.Gravity;
+
+import androidx.annotation.Nullable;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.TextView;
-import android.widget.Toast;
 
+import com.termux.shared.logger.Logger;
+import com.termux.shared.models.ExecutionCommand;
+import com.termux.shared.notification.NotificationUtils;
+import com.termux.shared.shell.TermuxSession;
+import com.termux.shared.shell.TermuxShellEnvironmentClient;
+import com.termux.shared.termux.TermuxConstants;
+import com.termux.shared.termux.TermuxConstants.TERMUX_FLOAT_APP.TERMUX_FLOAT_SERVICE;
 import com.termux.terminal.TerminalSession;
-
-import java.io.File;
+import com.termux.terminal.TerminalSessionClient;
 
 public class TermuxFloatService extends Service {
 
-    private static final String NOTIFICATION_CHANNEL_ID = "termux_notification_channel";
-
-    public static final String ACTION_HIDE = "com.termux.float.hide";
-    public static final String ACTION_SHOW = "com.termux.float.show";
-
     /**
-     * Note that this is a symlink on the Android M preview.
+     *  The {@link TerminalSessionClient} interface implementation to allow for communication between
+     *  {@link TerminalSession} and {@link TermuxFloatService}.
      */
-    @SuppressLint("SdCardPath")
-    public static final String FILES_PATH = "/data/data/com.termux/files";
-    public static final String PREFIX_PATH = FILES_PATH + "/usr";
-    public static final String HOME_PATH = FILES_PATH + "/home";
+    TermuxFloatSessionClient mTermuxFloatSessionClient;
 
-    /**
-     * The notification id supplied to {@link #startForeground(int, Notification)}.
-     * <p/>
-     * Note that the javadoc for that method says it cannot be zero.
-     */
-    private static final int NOTIFICATION_ID = 0xdead1337;
-
-    private int MIN_FONTSIZE;
-    private static final int MAX_FONTSIZE = 256;
-    private static final String FONTSIZE_KEY = "fontsize";
     private TermuxFloatView mFloatingWindow;
-    private int mFontSize;
 
     private boolean mVisibleWindow = true;
+
+    private static final String LOG_TAG = "TermuxFloatService";
 
     @Override
     public IBinder onBind(Intent intent) {
         return null;
     }
 
-    /**
-     * If value is not in the range [min, max], set it to either min or max.
-     */
-    static int clamp(int value, int min, int max) {
-        return Math.min(Math.max(value, min), max);
-    }
-
-    @SuppressLint({"InflateParams"})
     @Override
     public void onCreate() {
-        super.onCreate();
-
-        float dipInPixels = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 1, getApplicationContext().getResources().getDisplayMetrics());
-
-        // This is a bit arbitrary and sub-optimal. We want to give a sensible default for minimum font size
-        // to prevent invisible text due to zoom be mistake:
-        MIN_FONTSIZE = (int) (4f * dipInPixels);
-
-        // http://www.google.com/design/spec/style/typography.html#typography-line-height
-        int defaultFontSize = Math.round(12 * dipInPixels);
-        // Make it divisible by 2 since that is the minimal adjustment step:
-        if (defaultFontSize % 2 == 1) defaultFontSize--;
-
-        final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        try {
-            mFontSize = Integer.parseInt(prefs.getString(FONTSIZE_KEY, Integer.toString(defaultFontSize)));
-        } catch (NumberFormatException | ClassCastException e) {
-            mFontSize = defaultFontSize;
-        }
-
-        mFontSize = clamp(mFontSize, MIN_FONTSIZE, MAX_FONTSIZE);
-
-        TermuxFloatView floatingWindow = (TermuxFloatView) ((LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE)).inflate(R.layout.activity_main, null);
-        floatingWindow.initializeFloatingWindow();
-        floatingWindow.mTerminalView.setTextSize(mFontSize);
-
-        TerminalSession session = createTermSession();
-        floatingWindow.mTerminalView.attachSession(session);
-
-        try {
-            floatingWindow.launchFloatingWindow();
-        } catch (Exception e) {
-            // Settings.canDrawOverlays() does not work (always returns false, perhaps due to sharedUserId?).
-            // So instead we catch the exception and prompt here.
-            startActivity(new Intent(this, TermuxFloatPermissionActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-            stopSelf();
-            return;
-        }
-
-        mFloatingWindow = floatingWindow;
-
-        Toast toast = Toast.makeText(this, R.string.initial_instruction_toast, Toast.LENGTH_LONG);
-        toast.setGravity(Gravity.CENTER, 0, 0);
-        TextView v = toast.getView().findViewById(android.R.id.message);
-        if (v != null) v.setGravity(Gravity.CENTER);
-        toast.show();
-
-        startForeground(NOTIFICATION_ID, buildNotification());
+        runStartForeground();
+        TermuxFloatApplication.setLogLevel(this);
+        Logger.logVerbose(LOG_TAG, "onCreate");
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    private void setupNotificationChannel() {
-        String channelName = "Termux";
-        String channelDescription = "Notifications from Termux";
-        int importance = NotificationManager.IMPORTANCE_LOW;
-
-        NotificationChannel channel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, channelName, importance);
-        channel.setDescription(channelDescription);
-        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        manager.createNotificationChannel(channel);
-    }
-
-    private Notification buildNotification() {
-        final Resources res = getResources();
-        final String contentTitle = res.getString(R.string.notification_title);
-        final String contentText = res.getString(mVisibleWindow ? R.string.notification_message_visible : R.string.notification_message_hidden);
-
-        final String intentAction = mVisibleWindow ? ACTION_HIDE : ACTION_SHOW;
-        Intent actionIntent = new Intent(this, TermuxFloatService.class).setAction(intentAction);
-
-        Notification.Builder builder = new Notification.Builder(this).setContentTitle(contentTitle).setContentText(contentText)
-            .setPriority(Notification.PRIORITY_MIN).setSmallIcon(R.mipmap.ic_service_notification)
-            .setColor(0xFF000000)
-            .setContentIntent(PendingIntent.getService(this, 0, actionIntent, 0))
-            .setOngoing(true)
-            .setShowWhen(false);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            setupNotificationChannel();
-            builder.setChannelId(NOTIFICATION_CHANNEL_ID);
-        }
-
-        //final int messageId = mVisibleWindow ? R.string.toggle_hide : R.string.toggle_show;
-        //builder.addAction(android.R.drawable.ic_menu_preferences, res.getString(messageId), PendingIntent.getService(this, 0, actionIntent, 0));
-        return builder.build();
-    }
-
-
-    @SuppressLint("Wakelock")
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        Logger.logDebug(LOG_TAG, "onStartCommand");
+
+        // Run again in case service is already started and onCreate() is not called
+        runStartForeground();
+
+        if (!initializeFloatView())
+            return Service.START_NOT_STICKY;
+
         String action = intent.getAction();
-        if (ACTION_HIDE.equals(action)) {
-            setVisible(false);
-        } else if (ACTION_SHOW.equals(action)) {
-            setVisible(true);
+
+        if (action != null) {
+            switch (action) {
+                case TERMUX_FLOAT_SERVICE.ACTION_STOP_SERVICE:
+                    Logger.logDebug(LOG_TAG, "ACTION_STOP_SERVICE intent received");
+                    requestStopService();
+                    break;
+                case TERMUX_FLOAT_SERVICE.ACTION_SHOW:
+                    Logger.logDebug(LOG_TAG, "ACTION_SHOW intent received");
+                    setVisible(true);
+                    break;
+                case TERMUX_FLOAT_SERVICE.ACTION_HIDE:
+                    Logger.logDebug(LOG_TAG, "ACTION_HIDE intent received");
+                    setVisible(false);
+                    break;
+                default:
+                    Logger.logError(LOG_TAG, "Invalid action: \"" + action + "\"");
+                    break;
+            }
         } else if (!mVisibleWindow) {
             // Show window if hidden when launched through launcher icon.
             setVisible(true);
         }
+
         return Service.START_NOT_STICKY;
+
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (mFloatingWindow != null) mFloatingWindow.closeFloatingWindow();
+        Logger.logVerbose(LOG_TAG, "onDestroy");
+
+        if (mFloatingWindow != null)
+            mFloatingWindow.closeFloatingWindow();
+
+        runStopForeground();
+    }
+    /** Request to stop service. */
+    public void requestStopService() {
+        Logger.logDebug(LOG_TAG, "Requesting to stop service");
+        runStopForeground();
+        stopSelf();
+    }
+
+    /** Make service run in foreground mode. */
+    private void runStartForeground() {
+        setupNotificationChannel();
+        startForeground(TermuxConstants.TERMUX_FLOAT_APP_NOTIFICATION_ID, buildNotification());
+    }
+
+    /** Make service leave foreground mode. */
+    private void runStopForeground() {
+        stopForeground(true);
+    }
+
+
+
+    private void setupNotificationChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+
+        NotificationUtils.setupNotificationChannel(this, TermuxConstants.TERMUX_FLOAT_APP_NOTIFICATION_CHANNEL_ID,
+                TermuxConstants.TERMUX_FLOAT_APP_NOTIFICATION_CHANNEL_NAME, NotificationManager.IMPORTANCE_LOW);
+    }
+
+    private Notification buildNotification() {
+        final Resources res = getResources();
+
+        final String notificationText = res.getString(mVisibleWindow ? R.string.notification_message_visible : R.string.notification_message_hidden);
+
+        final String intentAction = mVisibleWindow ? TERMUX_FLOAT_SERVICE.ACTION_HIDE : TERMUX_FLOAT_SERVICE.ACTION_SHOW;
+        Intent notificationIntent = new Intent(this, TermuxFloatService.class).setAction(intentAction);
+        PendingIntent contentIntent = PendingIntent.getService(this, 0, notificationIntent, 0);
+
+        // Build the notification
+        Notification.Builder builder =  NotificationUtils.geNotificationBuilder(this,
+                TermuxConstants.TERMUX_FLOAT_APP_NOTIFICATION_CHANNEL_ID, Notification.PRIORITY_MIN,
+                TermuxConstants.TERMUX_FLOAT_APP_NAME, notificationText, null,
+                contentIntent, null, NotificationUtils.NOTIFICATION_MODE_SILENT);
+        if (builder == null)  return null;
+
+        // No need to show a timestamp:
+        builder.setShowWhen(false);
+
+        // Set notification icon
+        builder.setSmallIcon(R.mipmap.ic_service_notification);
+
+        // Set background color for small notification icon
+        builder.setColor(0xFF000000);
+
+        // TermuxSessions are always ongoing
+        builder.setOngoing(true);
+
+        return builder.build();
+    }
+
+
+
+    @SuppressLint("InflateParams")
+    private boolean initializeFloatView() {
+        mTermuxFloatSessionClient = new TermuxFloatSessionClient(this);
+
+        boolean floatWindowWasNull = false;
+        if (mFloatingWindow == null) {
+            mFloatingWindow = (TermuxFloatView) ((LayoutInflater)
+                    getSystemService(Context.LAYOUT_INFLATER_SERVICE)).inflate(R.layout.activity_main, null);
+            floatWindowWasNull = true;
+        }
+
+        mFloatingWindow.initFloatView();
+
+        TermuxSession session = createTermuxSession(
+                new ExecutionCommand(0, null, null, null, null, false, false), null);
+        if (session == null)
+            return false;
+        mFloatingWindow.mTerminalView.attachSession(session.getTerminalSession());
+
+        try {
+            mFloatingWindow.launchFloatingWindow();
+        } catch (Exception e) {
+            Logger.logStackTrace(LOG_TAG, e);
+            // Settings.canDrawOverlays() does not work (always returns false, perhaps due to sharedUserId?).
+            // So instead we catch the exception and prompt here.
+            startActivity(new Intent(this, TermuxFloatPermissionActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            requestStopService();
+            return false;
+        }
+
+        if (floatWindowWasNull)
+            Logger.showToast(this, getString(R.string.initial_instruction_toast), true);
+
+        return true;
     }
 
     private void setVisible(boolean newVisibility) {
         mVisibleWindow = newVisibility;
         mFloatingWindow.setVisibility(newVisibility ? View.VISIBLE : View.GONE);
-        ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(NOTIFICATION_ID, buildNotification());
+        ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(TermuxConstants.TERMUX_FLOAT_APP_NOTIFICATION_ID, buildNotification());
     }
 
-    public void changeFontSize(boolean increase) {
-        mFontSize += (increase ? 1 : -1) * 2;
-        mFontSize = Math.max(MIN_FONTSIZE, mFontSize);
 
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        prefs.edit().putString(FONTSIZE_KEY, Integer.toString(mFontSize)).apply();
 
-        mFloatingWindow.mTerminalView.setTextSize(mFontSize);
+    /** Create a {@link TermuxSession}. */
+    @Nullable
+    public synchronized TermuxSession createTermuxSession(ExecutionCommand executionCommand, String sessionName) {
+        if (executionCommand == null) return null;
+
+        Logger.logDebug(LOG_TAG, "Creating \"" + executionCommand.getCommandIdAndLabelLogString() + "\" TermuxSession");
+
+        if (executionCommand.inBackground) {
+            Logger.logDebug(LOG_TAG, "Ignoring a background execution command passed to createTermuxSession()");
+            return null;
+        }
+
+        if (Logger.getLogLevel() >= Logger.LOG_LEVEL_VERBOSE)
+            Logger.logVerboseExtended(LOG_TAG, executionCommand.toString());
+
+        // If the execution command was started for a plugin, only then will the stdout be set
+        // Otherwise if command was manually started by the user like by adding a new terminal session,
+        // then no need to set stdout
+        TermuxSession newTermuxSession = TermuxSession.execute(this, executionCommand,
+                mTermuxFloatSessionClient, null, new TermuxShellEnvironmentClient(),
+                sessionName, executionCommand.isPluginExecutionCommand);
+        if (newTermuxSession == null) {
+            Logger.logError(LOG_TAG, "Failed to execute new TermuxSession command for:\n" + executionCommand.getCommandIdAndLabelLogString());
+            return null;
+        }
+
+        return newTermuxSession;
     }
 
-    // XXX: Keep in sync with TermuxService.java.
-    @SuppressLint("SdCardPath")
-    TerminalSession createTermSession() {
-        new File(HOME_PATH).mkdirs();
 
-        final String termEnv = "TERM=xterm-256color";
-        final String homeEnv = "HOME=" + TermuxFloatService.HOME_PATH;
-        final String prefixEnv = "PREFIX=" + TermuxFloatService.PREFIX_PATH;
-        final String androidRootEnv = "ANDROID_ROOT=" + System.getenv("ANDROID_ROOT");
-        final String androidDataEnv = "ANDROID_DATA=" + System.getenv("ANDROID_DATA");
-        // EXTERNAL_STORAGE is needed for /system/bin/am to work on at least
-        // Samsung S7 - see https://plus.google.com/110070148244138185604/posts/gp8Lk3aCGp3.
-        final String externalStorageEnv = "EXTERNAL_STORAGE=" + System.getenv("EXTERNAL_STORAGE");
-        final String ps1Env = "PS1=$ ";
-        final String ldEnv = "LD_LIBRARY_PATH=" + TermuxFloatService.PREFIX_PATH + "/lib";
-        final String langEnv = "LANG=en_US.UTF-8";
-        final String pathEnv = "PATH=" + TermuxFloatService.PREFIX_PATH + "/bin:" + TermuxFloatService.PREFIX_PATH + "/bin/applets";
-        String[] env = new String[]{termEnv, homeEnv, prefixEnv, ps1Env, ldEnv, langEnv, pathEnv, androidRootEnv, androidDataEnv, externalStorageEnv};
 
-        String executablePath = null;
-        String[] args;
-        String shellName = null;
-
-        for (String shellBinary : new String[]{"login", "bash", "zsh"}) {
-            File shellFile = new File(PREFIX_PATH + "/bin/" + shellBinary);
-            if (shellFile.canExecute()) {
-                executablePath = shellFile.getAbsolutePath();
-                shellName = "-" + shellBinary;
-                break;
-            }
-        }
-
-        if (executablePath == null) {
-            // Fall back to system shell as last resort:
-            executablePath = "/system/bin/sh";
-            shellName = "-sh";
-        }
-
-        args = new String[]{shellName};
-
-        return new TerminalSession(executablePath, HOME_PATH, args, env, new TerminalSession.SessionChangedCallback() {
-            @Override
-            public void onTitleChanged(TerminalSession changedSession) {
-                // Ignore for now.
-            }
-
-            @Override
-            public void onTextChanged(TerminalSession changedSession) {
-                mFloatingWindow.mTerminalView.onScreenUpdated();
-            }
-
-            @Override
-            public void onSessionFinished(TerminalSession finishedSession) {
-                stopSelf();
-            }
-
-            @Override
-            public void onClipboardText(TerminalSession pastingSession, String text) {
-                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                clipboard.setPrimaryClip(new ClipData(null, new String[]{"text/plain"}, new ClipData.Item(text)));
-            }
-
-            @Override
-            public void onBell(TerminalSession riningSession) {
-                ((Vibrator) getSystemService(Context.VIBRATOR_SERVICE)).vibrate(50);
-            }
-
-            @Override
-            public void onColorsChanged(TerminalSession session) {
-            }
-        });
+    public TermuxFloatView getFloatingWindow() {
+        return mFloatingWindow;
     }
 
 }

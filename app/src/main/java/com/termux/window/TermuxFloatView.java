@@ -5,7 +5,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
-import android.graphics.Typeface;
 import android.os.Build;
 import android.util.AttributeSet;
 import android.view.Gravity;
@@ -20,13 +19,13 @@ import android.widget.LinearLayout;
 
 import com.termux.shared.logger.Logger;
 import com.termux.shared.settings.preferences.TermuxFloatAppSharedPreferences;
-import com.termux.shared.settings.properties.TermuxSharedProperties;
 import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.view.KeyboardUtils;
+import com.termux.terminal.TerminalSession;
+import com.termux.terminal.TerminalSessionClient;
 import com.termux.view.TerminalView;
 import com.termux.view.TerminalViewClient;
-
-import java.io.File;
+import com.termux.window.settings.properties.TermuxFloatAppSharedProperties;
 
 public class TermuxFloatView extends LinearLayout {
 
@@ -39,7 +38,7 @@ public class TermuxFloatView extends LinearLayout {
     final WindowManager.LayoutParams layoutParams = new WindowManager.LayoutParams();
     WindowManager mWindowManager;
 
-    TerminalView mTerminalView;
+    private TerminalView mTerminalView;
     ViewGroup mWindowControls;
     FloatingBubbleManager mFloatingBubbleManager;
 
@@ -50,6 +49,12 @@ public class TermuxFloatView extends LinearLayout {
     TermuxFloatViewClient mTermuxFloatViewClient;
 
     /**
+     *  The {@link TerminalSessionClient} interface implementation to allow for communication between
+     *  {@link TerminalSession} and {@link TermuxFloatService}.
+     */
+    TermuxFloatSessionClient mTermuxFloatSessionClient;
+
+    /**
      * Termux Float app shared preferences manager.
      */
     private TermuxFloatAppSharedPreferences mPreferences;
@@ -57,7 +62,7 @@ public class TermuxFloatView extends LinearLayout {
     /**
      * Termux app shared properties manager, loaded from termux.properties
      */
-    private TermuxSharedProperties mProperties;
+    private TermuxFloatAppSharedProperties mProperties;
 
     private boolean withFocus = true;
     int initialX;
@@ -116,11 +121,11 @@ public class TermuxFloatView extends LinearLayout {
         }
     }
 
-    public void initFloatView() {
+    public void initFloatView(TermuxFloatService service) {
         Logger.logDebug(LOG_TAG, "initFloatView");
 
         // Load termux shared properties
-        mProperties = new TermuxSharedProperties(getContext());
+        mProperties = new TermuxFloatAppSharedProperties(getContext());
 
         // Load termux float shared preferences
         // This will also fail if TermuxConstants.TERMUX_FLOAT_PACKAGE_NAME does not equal applicationId
@@ -129,8 +134,10 @@ public class TermuxFloatView extends LinearLayout {
             return;
         }
 
+        mTermuxFloatSessionClient = new TermuxFloatSessionClient(service, this);
+
         mTerminalView = findViewById(R.id.terminal_view);
-        mTermuxFloatViewClient = new TermuxFloatViewClient(this);
+        mTermuxFloatViewClient = new TermuxFloatViewClient(this, mTermuxFloatSessionClient);
         mTerminalView.setTerminalViewClient(mTermuxFloatViewClient);
         mTermuxFloatViewClient.initFloatView();
 
@@ -158,17 +165,16 @@ public class TermuxFloatView extends LinearLayout {
         DISPLAY_WIDTH = displaySize.x;
         DISPLAY_HEIGHT = displaySize.y;
 
-        checkForFont();
+        if (mTermuxFloatSessionClient != null)
+            mTermuxFloatSessionClient.onAttachedToWindow();
     }
 
-    void checkForFont() {
-        try {
-            @SuppressLint("SdCardPath") File fontFile = TermuxConstants.TERMUX_FONT_FILE;
-            final Typeface newTypeface = (fontFile.exists() && fontFile.length() > 0) ? Typeface.createFromFile(fontFile) : Typeface.MONOSPACE;
-            mTerminalView.setTypeface(newTypeface);
-        } catch (Exception e) {
-            Logger.logStackTraceWithMessage(LOG_TAG, "Error in checkForFont()", e);
-        }
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+
+        if (mTermuxFloatSessionClient != null)
+            mTermuxFloatSessionClient.onDetachedFromWindow();
     }
 
     @SuppressLint("RtlHardcoded")
@@ -323,15 +329,35 @@ public class TermuxFloatView extends LinearLayout {
     }
 
 
+
+    public boolean isVisible() {
+        return isAttachedToWindow() && isShown();
+    }
+
     public TerminalView getTerminalView() {
         return mTerminalView;
+    }
+
+    public TermuxFloatViewClient getTermuxFloatViewClient() {
+        return mTermuxFloatViewClient;
+    }
+
+    public TermuxFloatSessionClient getTermuxFloatSessionClient() {
+        return mTermuxFloatSessionClient;
     }
 
     public TermuxFloatAppSharedPreferences getPreferences() {
         return mPreferences;
     }
 
-    public TermuxSharedProperties getProperties() {
+    public TermuxFloatAppSharedProperties getProperties() {
         return mProperties;
+    }
+
+
+    public void reloadViewStyling() {
+        // Leaving here for future support for termux-reload-settings
+        if (mTermuxFloatSessionClient != null)
+            mTermuxFloatSessionClient.onReload();
     }
 }

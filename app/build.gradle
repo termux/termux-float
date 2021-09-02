@@ -53,8 +53,14 @@ android {
 
 dependencies {
     implementation 'androidx.annotation:annotation:1.2.0'
-    implementation 'com.termux.termux-app:termux-shared:9f1203f049'
-    implementation 'com.termux.termux-app:terminal-view:9f1203f049'
+
+    implementation 'com.termux.termux-app:termux-shared:bc779d2ffb'
+    implementation 'com.termux.termux-app:terminal-view:bc779d2ffb'
+
+    // Use if below libraries are published locally by termux-app with `./gradlew publishReleasePublicationToMavenLocal` and used with `mavenLocal()`.
+    // If updates are done, republish there and sync project with gradle files here
+    //implementation 'com.termux:termux-shared:0.117'
+    //implementation 'com.termux:terminal-view:0.117'
 
     testImplementation 'junit:junit:4.13.2'
 }

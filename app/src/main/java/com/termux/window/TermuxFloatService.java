@@ -22,18 +22,12 @@ import com.termux.shared.shell.TermuxSession;
 import com.termux.shared.shell.TermuxShellEnvironmentClient;
 import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.termux.TermuxConstants.TERMUX_FLOAT_APP.TERMUX_FLOAT_SERVICE;
-import com.termux.terminal.TerminalSession;
-import com.termux.terminal.TerminalSessionClient;
 
 public class TermuxFloatService extends Service {
 
-    /**
-     *  The {@link TerminalSessionClient} interface implementation to allow for communication between
-     *  {@link TerminalSession} and {@link TermuxFloatService}.
-     */
-    TermuxFloatSessionClient mTermuxFloatSessionClient;
-
     private TermuxFloatView mFloatingWindow;
+
+    private TermuxSession mSession;
 
     private boolean mVisibleWindow = true;
 
@@ -58,7 +52,7 @@ public class TermuxFloatService extends Service {
         // Run again in case service is already started and onCreate() is not called
         runStartForeground();
 
-        if (!initializeFloatView())
+        if (mFloatingWindow == null && !initializeFloatView())
             return Service.START_NOT_STICKY;
 
         String action = intent.getAction();
@@ -67,7 +61,7 @@ public class TermuxFloatService extends Service {
             switch (action) {
                 case TERMUX_FLOAT_SERVICE.ACTION_STOP_SERVICE:
                     Logger.logDebug(LOG_TAG, "ACTION_STOP_SERVICE intent received");
-                    requestStopService();
+                    actionStopService();
                     break;
                 case TERMUX_FLOAT_SERVICE.ACTION_SHOW:
                     Logger.logDebug(LOG_TAG, "ACTION_SHOW intent received");
@@ -107,6 +101,13 @@ public class TermuxFloatService extends Service {
         stopSelf();
     }
 
+    /** Process action to stop service. */
+    private void actionStopService() {
+        if (mSession != null)
+            mSession.killIfExecuting(this, false);
+        requestStopService();
+    }
+
     /** Make service run in foreground mode. */
     private void runStartForeground() {
         setupNotificationChannel();
@@ -138,7 +139,7 @@ public class TermuxFloatService extends Service {
 
         // Build the notification
         Notification.Builder builder =  NotificationUtils.geNotificationBuilder(this,
-                TermuxConstants.TERMUX_FLOAT_APP_NOTIFICATION_CHANNEL_ID, Notification.PRIORITY_MIN,
+                TermuxConstants.TERMUX_FLOAT_APP_NOTIFICATION_CHANNEL_ID, Notification.PRIORITY_LOW,
                 TermuxConstants.TERMUX_FLOAT_APP_NAME, notificationText, null,
                 contentIntent, null, NotificationUtils.NOTIFICATION_MODE_SILENT);
         if (builder == null)  return null;
@@ -155,6 +156,10 @@ public class TermuxFloatService extends Service {
         // TermuxSessions are always ongoing
         builder.setOngoing(true);
 
+        // Set Exit button action
+        Intent exitIntent = new Intent(this, TermuxFloatService.class).setAction(TERMUX_FLOAT_SERVICE.ACTION_STOP_SERVICE);
+        builder.addAction(android.R.drawable.ic_delete, res.getString(R.string.notification_action_exit), PendingIntent.getService(this, 0, exitIntent, 0));
+
         return builder.build();
     }
 
@@ -162,8 +167,6 @@ public class TermuxFloatService extends Service {
 
     @SuppressLint("InflateParams")
     private boolean initializeFloatView() {
-        mTermuxFloatSessionClient = new TermuxFloatSessionClient(this);
-
         boolean floatWindowWasNull = false;
         if (mFloatingWindow == null) {
             mFloatingWindow = (TermuxFloatView) ((LayoutInflater)
@@ -171,13 +174,13 @@ public class TermuxFloatService extends Service {
             floatWindowWasNull = true;
         }
 
-        mFloatingWindow.initFloatView();
+        mFloatingWindow.initFloatView(this);
 
-        TermuxSession session = createTermuxSession(
-                new ExecutionCommand(0, null, null, null, null, false, false), null);
-        if (session == null)
+        mSession = createTermuxSession(
+                new ExecutionCommand(0, null, null, null, mFloatingWindow.getProperties().getDefaultWorkingDirectory(), false, false), null);
+        if (mSession == null)
             return false;
-        mFloatingWindow.mTerminalView.attachSession(session.getTerminalSession());
+        mFloatingWindow.getTerminalView().attachSession(mSession.getTerminalSession());
 
         try {
             mFloatingWindow.launchFloatingWindow();
@@ -219,24 +222,23 @@ public class TermuxFloatService extends Service {
         if (Logger.getLogLevel() >= Logger.LOG_LEVEL_VERBOSE)
             Logger.logVerboseExtended(LOG_TAG, executionCommand.toString());
 
-        // If the execution command was started for a plugin, only then will the stdout be set
-        // Otherwise if command was manually started by the user like by adding a new terminal session,
-        // then no need to set stdout
+        executionCommand.terminalTranscriptRows = mFloatingWindow.getProperties().getTerminalTranscriptRows();
         TermuxSession newTermuxSession = TermuxSession.execute(this, executionCommand,
-                mTermuxFloatSessionClient, null, new TermuxShellEnvironmentClient(),
+                mFloatingWindow.getTermuxFloatSessionClient(), null, new TermuxShellEnvironmentClient(),
                 sessionName, executionCommand.isPluginExecutionCommand);
         if (newTermuxSession == null) {
             Logger.logError(LOG_TAG, "Failed to execute new TermuxSession command for:\n" + executionCommand.getCommandIdAndLabelLogString());
             return null;
         }
 
+        // Emulator won't be set at this point so colors won't be set by TermuxFloatSessionClient.checkForFontAndColors()
+        mFloatingWindow.reloadViewStyling();
+
         return newTermuxSession;
     }
 
-
-
-    public TermuxFloatView getFloatingWindow() {
-        return mFloatingWindow;
+    public TermuxSession getSession() {
+        return mSession;
     }
 
 }

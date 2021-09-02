@@ -15,13 +15,16 @@ import com.termux.terminal.TerminalSession;
 public class TermuxFloatViewClient extends TermuxTerminalViewClientBase {
 
     private final TermuxFloatView mView;
+    private final TermuxFloatSessionClient mTermuxFloatSessionClient;
+
     /**
      * Keeping track of the special keys acting as Ctrl and Fn for the soft keyboard and other hardware keys.
      */
     boolean mVirtualControlKeyDown, mVirtualFnKeyDown;
 
-    public TermuxFloatViewClient(TermuxFloatView view) {
-        this.mView = view;
+    public TermuxFloatViewClient(TermuxFloatView view, TermuxFloatSessionClient termuxFloatSessionClient) {
+        mView = view;
+        mTermuxFloatSessionClient = termuxFloatSessionClient;
     }
 
     /**
@@ -34,6 +37,17 @@ public class TermuxFloatViewClient extends TermuxTerminalViewClientBase {
         boolean isTerminalViewKeyLoggingEnabled = mView.getPreferences().isTerminalViewKeyLoggingEnabled(true);
         mView.getTerminalView().setIsTerminalViewKeyLoggingEnabled(isTerminalViewKeyLoggingEnabled);
     }
+
+    /**
+     * Should be called when {@link com.termux.view.TerminalView#mEmulator} is set
+     */
+    @Override
+    public void onEmulatorSet() {
+        // This is being called every time float bubble is maximized
+        mTermuxFloatSessionClient.checkForFontAndColors();
+    }
+
+
 
     @Override
     public float onScale(float scale) {
@@ -57,13 +71,18 @@ public class TermuxFloatViewClient extends TermuxTerminalViewClientBase {
     }
 
     @Override
-    public void onSingleTapUp(MotionEvent e) {
-        // Do nothing.
+    public boolean shouldBackButtonBeMappedToEscape() {
+        return mView.getProperties().isBackKeyTheEscapeKey();
     }
 
     @Override
-    public boolean shouldBackButtonBeMappedToEscape() {
-        return false;
+    public boolean shouldEnforceCharBasedInput() {
+        return mView.getProperties().isEnforcingCharBasedInput();
+    }
+
+    @Override
+    public boolean shouldUseCtrlSpaceWorkaround() {
+        return mView.getProperties().isUsingCtrlSpaceWorkaround();
     }
 
     @Override
@@ -220,7 +239,9 @@ public class TermuxFloatViewClient extends TermuxTerminalViewClientBase {
      */
     private boolean handleVirtualKeys(int keyCode, KeyEvent event, boolean down) {
         InputDevice inputDevice = event.getDevice();
-        if (inputDevice != null && inputDevice.getKeyboardType() == InputDevice.KEYBOARD_TYPE_ALPHABETIC) {
+        if (mView.getProperties().areVirtualVolumeKeysDisabled()) {
+            return false;
+        } else if (inputDevice != null && inputDevice.getKeyboardType() == InputDevice.KEYBOARD_TYPE_ALPHABETIC) {
             // Do not steal dedicated buttons from a full external keyboard.
             return false;
         } else if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {

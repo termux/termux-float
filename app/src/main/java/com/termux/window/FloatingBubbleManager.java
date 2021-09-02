@@ -122,7 +122,7 @@ public class FloatingBubbleManager {
     }
 
     private TerminalView getTerminalView() {
-        return mTermuxFloatView.mTerminalView;
+        return mTermuxFloatView.getTerminalView();
     }
 
     private WindowManager getWindowManager() {

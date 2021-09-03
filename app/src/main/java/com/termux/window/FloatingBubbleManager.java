@@ -15,7 +15,7 @@ import com.termux.view.TerminalView;
  * to its original display.
  */
 public class FloatingBubbleManager {
-    private static final int DEFAULT_BUBBLE_SIZE_DP = 80;
+    private static final int DEFAULT_BUBBLE_SIZE_DP = 56;
 
     private TermuxFloatView mTermuxFloatView;
     private final int BUBBLE_SIZE_PX;

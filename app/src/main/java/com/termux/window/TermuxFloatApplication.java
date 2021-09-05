@@ -7,8 +7,8 @@ import com.termux.shared.crash.TermuxCrashUtils;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.settings.preferences.TermuxFloatAppSharedPreferences;
 
-
 public class TermuxFloatApplication extends Application {
+
     public void onCreate() {
         super.onCreate();
 
@@ -16,16 +16,16 @@ public class TermuxFloatApplication extends Application {
         TermuxCrashUtils.setCrashHandler(this);
 
         // Set log level for the app
-        setLogLevel(getApplicationContext());
+        setLogLevel(getApplicationContext(), true);
 
         Logger.logDebug("Starting Application");
     }
 
-    public static void setLogLevel(Context context) {
+    public static void setLogLevel(Context context, boolean commitToFile) {
         // Load the log level from shared preferences and set it to the {@link Logger.CURRENT_LOG_LEVEL}
         TermuxFloatAppSharedPreferences preferences = TermuxFloatAppSharedPreferences.build(context);
         if (preferences == null) return;
-        preferences.setLogLevel(null, preferences.getLogLevel(true), true);
+        preferences.setLogLevel(null, preferences.getLogLevel(true), commitToFile);
     }
-}
 
+}

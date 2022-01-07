@@ -59,7 +59,7 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.annotation:annotation:1.2.0'
+    implementation 'androidx.annotation:annotation:1.3.0'
 
     implementation 'com.termux.termux-app:termux-shared:fcc0d36258'
     implementation 'com.termux.termux-app:terminal-view:fcc0d36258'

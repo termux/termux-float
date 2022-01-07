@@ -41,7 +41,7 @@ public class TermuxFloatService extends Service {
     @Override
     public void onCreate() {
         runStartForeground();
-        TermuxFloatApplication.setLogLevel(this, false);
+        TermuxFloatApplication.setLogConfig(this, false);
         Logger.logVerbose(LOG_TAG, "onCreate");
     }
 

@@ -163,10 +163,11 @@ public class TermuxFloatSessionClient extends TermuxTerminalSessionClientBase {
             }
 
             TerminalColors.COLOR_SCHEME.updateWith(props);
-            TerminalSession session = mService.getSession().getTerminalSession();
+            TerminalSession session = mService.getCurrentSession();
             if (session != null && session.getEmulator() != null) {
                 session.getEmulator().mColors.reset();
             }
+
             updateBackgroundColor();
 
             final Typeface newTypeface = (fontFile.exists() && fontFile.length() > 0) ? Typeface.createFromFile(fontFile) : Typeface.MONOSPACE;
@@ -178,7 +179,8 @@ public class TermuxFloatSessionClient extends TermuxTerminalSessionClientBase {
 
     public void updateBackgroundColor() {
         //if (!mView.isVisible()) return;
-        TerminalSession session = mService.getSession().getTerminalSession();
+
+        TerminalSession session = mService.getCurrentSession();
         if (session != null && session.getEmulator() != null) {
             mView.getTerminalView().setBackgroundColor(session.getEmulator().mColors.mCurrentColors[TextStyle.COLOR_INDEX_BACKGROUND]);
         }

@@ -22,6 +22,7 @@ import com.termux.shared.shell.TermuxSession;
 import com.termux.shared.shell.TermuxShellEnvironmentClient;
 import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.termux.TermuxConstants.TERMUX_FLOAT_APP.TERMUX_FLOAT_SERVICE;
+import com.termux.terminal.TerminalSession;
 
 public class TermuxFloatService extends Service {
 
@@ -237,8 +238,12 @@ public class TermuxFloatService extends Service {
         return newTermuxSession;
     }
 
-    public TermuxSession getSession() {
+    public TermuxSession getTermuxSession() {
         return mSession;
+    }
+
+    public TerminalSession getCurrentSession() {
+        return mSession != null ? mSession.getTerminalSession() : null;
     }
 
 }

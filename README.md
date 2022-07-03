@@ -96,4 +96,4 @@ Check [Forking](https://github.com/termux/termux-app#Forking) section of `termux
 
 
 
-[Termux]: https://termux.org
+[Termux]: https://termux.dev

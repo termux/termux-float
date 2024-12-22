@@ -56,20 +56,21 @@ public class TermuxFloatService extends Service {
         if (mFloatingWindow == null && !initializeFloatView())
             return Service.START_NOT_STICKY;
 
-        String action = intent.getAction();
+        String action = null;
+        if (intent != null) {
+            Logger.logVerboseExtended(LOG_TAG, "Received intent:\n" + IntentUtils.getIntentString(intent));
+            action = intent.getAction();
+        }
 
         if (action != null) {
             switch (action) {
                 case TERMUX_FLOAT_SERVICE.ACTION_STOP_SERVICE:
-                    Logger.logDebug(LOG_TAG, "ACTION_STOP_SERVICE intent received");
                     actionStopService();
                     break;
                 case TERMUX_FLOAT_SERVICE.ACTION_SHOW:
-                    Logger.logDebug(LOG_TAG, "ACTION_SHOW intent received");
                     setVisible(true);
                     break;
                 case TERMUX_FLOAT_SERVICE.ACTION_HIDE:
-                    Logger.logDebug(LOG_TAG, "ACTION_HIDE intent received");
                     setVisible(false);
                     break;
                 default:

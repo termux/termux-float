@@ -32,7 +32,7 @@ public class FloatingBubbleManager {
 
     public FloatingBubbleManager(TermuxFloatView termuxFloatView) {
         mTermuxFloatView = termuxFloatView;
-        BUBBLE_SIZE_PX = ViewUtils.dpToPx(mTermuxFloatView.getContext(), DEFAULT_BUBBLE_SIZE_DP);
+        BUBBLE_SIZE_PX = (int) ViewUtils.dpToPx(mTermuxFloatView.getContext(), DEFAULT_BUBBLE_SIZE_DP);
     }
 
     public void toggleBubble() {

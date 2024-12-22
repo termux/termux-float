@@ -3,10 +3,10 @@ package com.termux.window;
 import android.app.Application;
 import android.content.Context;
 
-import com.termux.shared.crash.TermuxCrashUtils;
 import com.termux.shared.logger.Logger;
-import com.termux.shared.settings.preferences.TermuxFloatAppSharedPreferences;
 import com.termux.shared.termux.TermuxConstants;
+import com.termux.shared.termux.crash.TermuxCrashUtils;
+import com.termux.shared.termux.settings.preferences.TermuxFloatAppSharedPreferences;
 
 public class TermuxFloatApplication extends Application {
 

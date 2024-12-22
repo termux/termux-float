@@ -15,13 +15,14 @@ import androidx.annotation.Nullable;
 import android.view.LayoutInflater;
 import android.view.View;
 
+import com.termux.shared.data.IntentUtils;
 import com.termux.shared.logger.Logger;
-import com.termux.shared.models.ExecutionCommand;
 import com.termux.shared.notification.NotificationUtils;
-import com.termux.shared.shell.TermuxSession;
-import com.termux.shared.shell.TermuxShellEnvironmentClient;
+import com.termux.shared.shell.command.ExecutionCommand;
 import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.termux.TermuxConstants.TERMUX_FLOAT_APP.TERMUX_FLOAT_SERVICE;
+import com.termux.shared.termux.shell.command.environment.TermuxShellEnvironment;
+import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.terminal.TerminalSession;
 
 public class TermuxFloatService extends Service {
@@ -179,7 +180,7 @@ public class TermuxFloatService extends Service {
         mFloatingWindow.initFloatView(this);
 
         mSession = createTermuxSession(
-                new ExecutionCommand(0, null, null, null, mFloatingWindow.getProperties().getDefaultWorkingDirectory(), false, false), null);
+                new ExecutionCommand(0, null, null, null, mFloatingWindow.getProperties().getDefaultWorkingDirectory(), ExecutionCommand.Runner.TERMINAL_SESSION.getName(), false), null);
         if (mSession == null)
             return false;
         mFloatingWindow.getTerminalView().attachSession(mSession.getTerminalSession());
@@ -216,7 +217,7 @@ public class TermuxFloatService extends Service {
 
         Logger.logDebug(LOG_TAG, "Creating \"" + executionCommand.getCommandIdAndLabelLogString() + "\" TermuxSession");
 
-        if (executionCommand.inBackground) {
+        if (ExecutionCommand.Runner.APP_SHELL.getName().equals(executionCommand.runner)) {
             Logger.logDebug(LOG_TAG, "Ignoring a background execution command passed to createTermuxSession()");
             return null;
         }
@@ -224,10 +225,11 @@ public class TermuxFloatService extends Service {
         if (Logger.getLogLevel() >= Logger.LOG_LEVEL_VERBOSE)
             Logger.logVerboseExtended(LOG_TAG, executionCommand.toString());
 
+        executionCommand.shellName = sessionName;
         executionCommand.terminalTranscriptRows = mFloatingWindow.getProperties().getTerminalTranscriptRows();
         TermuxSession newTermuxSession = TermuxSession.execute(this, executionCommand,
-                mFloatingWindow.getTermuxFloatSessionClient(), null, new TermuxShellEnvironmentClient(),
-                sessionName, executionCommand.isPluginExecutionCommand);
+                mFloatingWindow.getTermuxFloatSessionClient(), null, new TermuxShellEnvironment(),
+                null, executionCommand.isPluginExecutionCommand);
         if (newTermuxSession == null) {
             Logger.logError(LOG_TAG, "Failed to execute new TermuxSession command for:\n" + executionCommand.getCommandIdAndLabelLogString());
             return null;

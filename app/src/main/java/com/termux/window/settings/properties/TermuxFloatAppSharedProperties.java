@@ -4,9 +4,9 @@ import android.content.Context;
 
 import androidx.annotation.NonNull;
 
-import com.termux.shared.settings.properties.TermuxPropertyConstants;
-import com.termux.shared.settings.properties.TermuxSharedProperties;
 import com.termux.shared.termux.TermuxConstants;
+import com.termux.shared.termux.settings.properties.TermuxPropertyConstants;
+import com.termux.shared.termux.settings.properties.TermuxSharedProperties;
 
 public class TermuxFloatAppSharedProperties extends TermuxSharedProperties {
 

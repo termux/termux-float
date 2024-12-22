@@ -45,8 +45,11 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        // Flag to enable support for the new language APIs
+        coreLibraryDesugaringEnabled true
+
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
     }
 
     applicationVariants.all { variant ->
@@ -55,22 +58,30 @@ android {
                     (apkVersionTag ? apkVersionTag : "v" + versionName + "+" + variant.buildType.name) + ".apk")
         }
     }
+
+    packagingOptions {
+        // Remove terminal-shared JNI libs added via termux-shared dependency
+        exclude "lib/*/liblocal-socket.so"
+    }
 }
 
 dependencies {
+    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:1.1.5"
+
     testImplementation "junit:junit:4.13.2"
 
     implementation "androidx.annotation:annotation:1.9.1"
 
-    implementation 'com.termux.termux-app:termux-shared:fcc0d36258'
-    implementation 'com.termux.termux-app:terminal-view:fcc0d36258'
+    implementation "com.termux.termux-app:termux-shared:b0e1dbc3da"
+    implementation "com.termux.termux-app:terminal-view:b0e1dbc3da"
 
     // Use if below libraries are published locally by termux-app with `./gradlew publishReleasePublicationToMavenLocal` and used with `mavenLocal()`.
     // If updates are done, republish there and sync project with gradle files here
     // https://github.com/termux/termux-app/wiki/Termux-Libraries
-    //implementation 'com.termux:termux-shared:0.117'
-    //implementation 'com.termux:terminal-view:0.117'
+    //implementation "com.termux:termux-shared:0.118.0"
+    //implementation "com.termux:terminal-view:0.118.0"
 
+    implementation "com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava"
 }
 
 task versionName {

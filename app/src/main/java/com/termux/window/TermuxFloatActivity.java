@@ -11,6 +11,10 @@ public class TermuxFloatActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+
+        // Set log level for the app
+        TermuxFloatApplication.setLogConfig(this, false);
+
         startService(new Intent(this, TermuxFloatService.class));
         finish();
     }

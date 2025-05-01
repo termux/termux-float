@@ -72,8 +72,8 @@ dependencies {
 
     implementation "androidx.annotation:annotation:1.9.1"
 
-    implementation "com.termux.termux-app:termux-shared:b0e1dbc3da"
-    implementation "com.termux.termux-app:terminal-view:b0e1dbc3da"
+    implementation "com.termux.termux-app:termux-shared:9ee1c9d5ad"
+    implementation "com.termux.termux-app:terminal-view:9ee1c9d5ad"
 
     // Use if below libraries are published locally by termux-app with `./gradlew publishReleasePublicationToMavenLocal` and used with `mavenLocal()`.
     // If updates are done, republish there and sync project with gradle files here

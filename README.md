@@ -50,22 +50,63 @@ The APKs for both of these are [`debuggable`](https://developer.android.com/stud
 **Termux and its plugins are no longer updated on [Google Play Store](https://play.google.com/store/apps/details?id=com.termux.window) due to [android 10 issues](https://github.com/termux/termux-packages/wiki/Termux-and-Android-10) and have been deprecated. It is highly recommended to not install Termux apps from Play Store any more.** Check https://github.com/termux/termux-app#google-play-store-deprecated for details.
 ##
 
+### Creating and Configuring Termux Float Properties
 
+In Termux:Float, a specialized file named `termux.float.properties` is used to define various settings. This file should be placed in the `~/.termux/` directory, where `~` is a shortcut for the Termux home directory `/data/data/com.termux/files/home/`, also referable by the `$HOME` shell environment variable. This setup is akin to how Termux utilizes the `termux.properties` file for configuring settings.
 
-### Terminal and App Settings
+You can create and/or edit the `termux.float.properties` file by utilizing the following commands to open the `nano` text editor within the terminal:
 
-The `Termux:Float` app supports defining various settings in `~/.termux/termux.float.properties` file like the `Termux` app does in `~/.termux/termux.properties` file for version `>= 0.15.0`. Currently, only the following properties are supported: `enforce-char-based-input`, `ctrl-space-workaround`, `bell-character`, `terminal-cursor-style`, `terminal-transcript-rows`, `back-key`, `default-working-directory`, `volume-keys`. Check [Terminal Settings](https://wiki.termux.com/wiki/Terminal_Settings) for more info. The `~/` is a shortcut for the Termux home directory `/data/data/com.termux/files/home/` and can also be referred by the `$HOME` shell environment variable.
-
-You can create/edit it by running the below commands to open the `nano` text editor in the terminal. Press `Ctrl+o` and then `Enter` to save and `Ctrl+x` to exit. You can also edit it with a [SAF file browser](https://github.com/termux/termux-tasker#Creating-And-Modifying-Scripts) after creating it.
-
-```
+```bash
 mkdir -p ~/.termux
 nano ~/.termux/termux.float.properties
 ```
+In the nano editor, press `Ctrl + o` followed by `Enter` to save changes, and `Ctrl + x` to exit. Alternatively, after creating the file, it can be edited using a SAF file browser.
+
+Below is a breakdown of the supported properties in the `termux.float.properties` file, alongside examples for each:
+
+- **enforce-char-based-input**: Set to `true` to enforce character-based input.
+  ```properties
+  enforce-char-based-input=true
+  ```
+
+- **ctrl-space-workaround**: Enables a workaround for Ctrl + Space input.
+  ```properties
+  ctrl-space-workaround=true
+  ```
+
+- **bell-character**: Define a character for the terminal bell.
+  ```properties
+  bell-character=a
+  ```
+
+- **terminal-cursor-style**: Choose a cursor style (`block`, `underline`, or `bar`).
+  ```properties
+  terminal-cursor-style=block
+  ```
+
+- **terminal-transcript-rows**: Set the number of transcript rows.
+  ```properties
+  terminal-transcript-rows=1000
+  ```
+
+- **back-key**: Define the behavior of the back key (`escape` or `ctrl`).
+  ```properties
+  back-key=escape
+  ```
+
+- **default-working-directory**: Specify a default working directory.
+  ```properties
+  default-working-directory=/sdcard
+  ```
+
+- **volume-keys**: Set the behavior of volume keys (`volume`, `control`, `meta`).
+  ```properties
+  volume-keys=control
+  ```
+
+These properties allow a tailored Termux:Float environment, enhancing the user experience by catering to individual preferences and workflow requirements. For further details on terminal settings, refer to the [Termux Terminal Settings guide](https://wiki.termux.com/wiki/Terminal_Settings).
 
 ##
-
-
 
 ### Debugging
 

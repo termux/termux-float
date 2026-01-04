@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!DOCTYPE resources [
+    <!ENTITY TERMUX_PACKAGE_NAME "com.termux">
+    <!ENTITY TERMUX_APP_NAME "Termux">
+    <!ENTITY TERMUX_FLOAT_APP_NAME "Termux:Float">
+    ]>
+
+<resources>
+    <string name="app_name">&TERMUX_FLOAT_APP_NAME;</string>
+	<string name="initial_instruction_toast">Mantenga presionada la ventana para moverla o cambiar su tamaño. Toque dos veces y arrastre el dedo hacia arriba o hacia abajo para cambiar el tamaño de la fuente.</string>
+	<string name="after_long_press">Arrastre para colocar y pellizque para cambiar el tamaño.</string>
+
+    <string name="draw_overlay_permission_explanation">Esta aplicación requiere permiso para dibujar superposiciones.</string>
+    <string name="grant_permission">Conceder permiso</string>
+
+    <string name="notification_action_exit">Salir</string>
+    <string name="notification_message_visible">Toque para ocultar la ventana.</string>
+    <string name="notification_message_hidden">Toque para mostrar la ventana.</string>
+</resources>
